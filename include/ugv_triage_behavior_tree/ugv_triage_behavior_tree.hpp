@@ -28,6 +28,8 @@
 #include <plan_executor_msgs/msg/milestone.hpp>
 #include <base_node_msgs/msg/node_state.hpp>
 
+#include <triage_database_interface/msg/database_array.hpp>
+
 #define INSPECTABLE_DISTANCE 3.0
 
 enum class BehaviorState_t : uint8_t {
@@ -82,6 +84,9 @@ private:
     void callback_milestone(plan_executor_msgs::msg::Milestone msg);
     void callback_rd(base_node_msgs::msg::NodeState msg);
     void callback_hemo(base_node_msgs::msg::NodeState msg);
+
+    void callback_database(triage_database_interface::msg::DatabaseArray msg);
+
     void clear_milstone(int id);
     
 
@@ -145,6 +150,8 @@ private:
     rclcpp::Subscription<plan_executor_msgs::msg::Milestone>::SharedPtr sub_milestone;
     rclcpp::Subscription<base_node_msgs::msg::NodeState>::SharedPtr sub_rd_nodestate;
     rclcpp::Subscription<base_node_msgs::msg::NodeState>::SharedPtr sub_hemo_nodestate;
+
+    rclcpp::Subscription<triage_database_interface::msg::DatabaseArray>::SharedPtr sub_database;
     // Timers
     rclcpp::TimerBase::SharedPtr timer_execution;
     rclcpp::TimerBase::SharedPtr timer_init_action;
@@ -171,6 +178,8 @@ private:
     std::string hemo_request_topic;
     std::string rd_nodestate_topic;
     std::string hemo_nodestate_topic;
+
+    std::string database_topic;
 
     BehaviorState_t curr_mode;
 

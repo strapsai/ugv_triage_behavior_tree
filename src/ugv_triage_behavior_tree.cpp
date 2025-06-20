@@ -23,6 +23,8 @@ Behavior_Executive::Behavior_Executive()
   rd_nodestate_topic{"rd_nodestate_topic"},
   hemo_nodestate_topic{"hemo_nodestate_topic"},
 
+  database_topic{"database_topic"},
+
   curr_mode(BehaviorState_t::IDLE),
   init_timeout_ms(5000),
   system_init_timer_running(false),
@@ -48,6 +50,8 @@ Behavior_Executive::Behavior_Executive()
     this->declare_parameter("hemo_request_topic", "hemo_request_topic");
     this->declare_parameter("rd_nodestate_topic", "rd_nodestate_topic");
     this->declare_parameter("hemo_nodestate_topic", "hemo_nodestate_topic");
+
+    this->declare_parameter("database_topic", "database_topic");
 }
 
 Behavior_Executive::~Behavior_Executive() {
@@ -102,6 +106,8 @@ void Behavior_Executive::initialize() {
     RCLCPP_INFO(this->get_logger(), "RD Node State Topic: %s", rd_nodestate_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "HEMO Node State Topic: %s", hemo_nodestate_topic.c_str());
 
+    this->get_parameter("database_topic", database_topic);
+    RCLCPP_INFO(this->get_logger(), "Database Topic: %s", database_topic.c_str());
 
     RCLCPP_INFO(this->get_logger(), "Behavior Executive Node Initialized");
 
@@ -229,6 +235,9 @@ void Behavior_Executive::initialize() {
         hemo_nodestate_topic, 10,
         std::bind(&Behavior_Executive::callback_hemo, this, std::placeholders::_1));
 
+    sub_database = create_subscription<triage_database_interface::msg::DatabaseArray>(
+        database_topic, 10,
+        std::bind(&Behavior_Executive::callback_database, this, std::placeholders::_1));
 
     // ==================================================
     // Initialize the timers.
@@ -726,6 +735,11 @@ double Behavior_Executive::get_distance(sensor_msgs::msg::NavSatFix a, sensor_ms
   double dif_x = a_utm.x-b_utm.x;
   double dif_y = a_utm.y-b_utm.y;
   return sqrt(dif_x*dif_x+dif_y*dif_y);
+}
+
+void Behavior_Executive::callback_database(triage_database_interface::msg::DatabaseArray msg){
+  //TODO
+  return;
 }
 
 void Behavior_Executive::switch_mode(BehaviorState_t state){

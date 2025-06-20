@@ -24,6 +24,10 @@ find_package(geographic_utils REQUIRED)
 
 find_package(plan_executor_msgs REQUIRED)
 
+find_package(triage_database_interface REQUIRED)
+
+find_package(rosidl_default_generators REQUIRED)
+
 set(LIB_NAME ${PROJECT_NAME})
 
 add_library(${LIB_NAME}
@@ -47,6 +51,8 @@ ament_target_dependencies(${LIB_NAME}
   geographic_utils
 
   plan_executor_msgs
+
+  triage_database_interface
 )
 
 

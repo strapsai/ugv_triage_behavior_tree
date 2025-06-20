@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(ugv_top_behavior_tree)
+project(ugv_triage_behavior_tree)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -19,7 +19,7 @@ find_package(behavior_tree REQUIRED)
 set(LIB_NAME ${PROJECT_NAME})
 
 add_library(${LIB_NAME}
-  src/ugv_top_behavior_tree.cpp)
+  src/ugv_triage_behavior_tree.cpp)
 
 
 target_include_directories(${LIB_NAME} 
@@ -57,17 +57,17 @@ ament_export_dependencies(
   behavior_tree_msgs 
 )
 
-add_executable(ugv_top_behavior_tree_node 
-  src/ugv_top_behavior_tree_node.cpp)
+add_executable(ugv_triage_behavior_tree_node 
+  src/ugv_triage_behavior_tree_node.cpp)
 
-target_link_libraries(ugv_top_behavior_tree_node
+target_link_libraries(ugv_triage_behavior_tree_node
   PUBLIC
   rclcpp::rclcpp
   ${LIB_NAME})
 
-target_compile_features(ugv_top_behavior_tree_node PUBLIC cxx_std_17)  # Require C++17
+target_compile_features(ugv_triage_behavior_tree_node PUBLIC cxx_std_17)  # Require C++17
 
-install(TARGETS ugv_top_behavior_tree_node
+install(TARGETS ugv_triage_behavior_tree_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY

@@ -13,11 +13,11 @@
 			[Manual Mode]
 		->
 			(Explore Mode Req)
-			include $(find ugv_exploration_behavior_tree)/config/exploration.tree
+			include $(find ugv_triage_behavior_tree)/config/exploration.tree
 		->
 			(Approach Mode Req)
 			(Got Approach Target)
-			include $(find ugv_approach_behavior_tree)/config/approach.tree
+			include $(find ugv_triage_behavior_tree)/config/approach.tree
 		->
 			(Inspect Mode Req)
-			include $(find ugv_inspection_behavior_tree)/config/inspection.tree
+			include $(find ugv_triage_behavior_tree)/config/inspection.tree

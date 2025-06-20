@@ -30,13 +30,13 @@ def generate_launch_description():
 
     system_init_arg = DeclareLaunchArgument(
         'init_topic',
-        default_value=[LaunchConfiguration("prefix"), 'behavior/top_level_tree/init_sub'],
+        default_value=[LaunchConfiguration("prefix"), 'behavior/init_sub'],
         description='Topic to listen to which indicates system is ready'
     )
 
     estop_topic_arg = DeclareLaunchArgument(
         'estop_topic',
-        default_value=[LaunchConfiguration("prefix"), 'behavior/top_level_tree/estop_sub'],
+        default_value=[LaunchConfiguration("prefix"), 'behavior/estop_sub'],
         description='Topic to listen for estop signal'
     )
 
@@ -46,13 +46,13 @@ def generate_launch_description():
     # 2 = Inspect
     current_state_arg = DeclareLaunchArgument(
         'current_state_topic',
-        default_value='behavior/top_level_tree/current_state_int',
+        default_value='behavior/current_state_int',
         description='Current state of the system in the form of UInt8'
     )
 
     state_selection_topic_arg = DeclareLaunchArgument(
         'state_selection_topic',
-        default_value='behavior/top_level_tree/select_state',
+        default_value='behavior/select_state',
         description='Current state of the system in the form of UInt8.'
     )
 
@@ -70,13 +70,13 @@ def generate_launch_description():
 
 #    in_explore_mode_arg = DeclareLaunchArgument(
 #        'explore_mode_topic',
-#        default_value='behavior/top_level_tree/in_explore_mode',
+#        default_value='behavior/in_explore_mode',
 #        description='True if in explore mode'
 #    )
 #
 #    in_inspect_mode_arg = DeclareLaunchArgument(
 #        'inspect_mode_topic',
-#        default_value='behavior/top_level_tree/in_inspect_mode',
+#        default_value='behavior/in_inspect_mode',
 #        description='True if in inspect mode'
 #    )
 
@@ -131,16 +131,16 @@ def generate_launch_description():
 
     manual_mode_topic_arg = DeclareLaunchArgument(
         'manual_mode_topic',
-        default_value='behavior/top_level_tree/in_manual_mode',
+        default_value='behavior/in_manual_mode',
         description='Topic declaring activation of the manual mode'
     )
 
 
     # Define the behavior tree node with namespace set directly
     behavior_tree_node = Node(
-        package='ugv_top_behavior_tree',
-        executable='ugv_top_behavior_tree_node',
-        name='behavior_executive_top_level',
+        package='ugv_triage_behavior_tree',
+        executable='ugv_triage_behavior_tree_node',
+        name='behavior_executive',
         namespace=LaunchConfiguration('namespace'),
         output='screen',
         parameters=[
@@ -158,7 +158,7 @@ def generate_launch_description():
     )
 
 
-    behavior_tree_launch_file = get_package_share_directory('ugv_top_behavior_tree') + '/launch/tree.launch.py'
+    behavior_tree_launch_file = get_package_share_directory('ugv_triage_behavior_tree') + '/launch/tree.launch.py'
     tree_launcher = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(behavior_tree_launch_file),
             launch_arguments={
@@ -169,34 +169,34 @@ def generate_launch_description():
 
 
 
-    exploration_launch_file = get_package_share_directory('ugv_exploration_behavior_tree') + '/launch/executive.launch.py'
-    exploration_launcher = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(exploration_launch_file),
-            launch_arguments={
-                'namespace': LaunchConfiguration('namespace'),
-                'prefix': LaunchConfiguration('prefix'),
-                'observed_casualty_topic': LaunchConfiguration('observed_casualty_topic'),
-                'robot_gps_topic': LaunchConfiguration('robot_gps_topic'),
-                'exploration_request_topic': LaunchConfiguration('exploration_request_topic'),
-                'state_selection_topic': LaunchConfiguration('state_selection_topic')
-            }.items(),
-        )
-
-    inspection_launch_file = get_package_share_directory('ugv_inspection_behavior_tree') + '/launch/executive.launch.py'
-    inspection_launcher = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(inspection_launch_file),
-            launch_arguments={
-                'namespace': LaunchConfiguration('namespace'),
-                'prefix': LaunchConfiguration('prefix'),
-                'milestone_in_topic':  LaunchConfiguration('milestone_in_topic'),
-                'milestone_out_topic':  LaunchConfiguration('milestone_out_topic'),
-                'inspection_plan_request_topic':  LaunchConfiguration('inspection_plan_request_topic'),
-                'rd_request_topic' :  LaunchConfiguration('rd_request_topic'),
-                'hemo_request_topic' :  LaunchConfiguration('hemo_request_topic'),
-                'rd_nodestate_topic' :  LaunchConfiguration('rd_nodestate_topic'),
-                'hemo_nodestate_topic' :  LaunchConfiguration('hemo_nodestate_topic')
-            }.items(),
-        )
+#    exploration_launch_file = get_package_share_directory('ugv_exploration_behavior_tree') + '/launch/executive.launch.py'
+#    exploration_launcher = IncludeLaunchDescription(
+#            PythonLaunchDescriptionSource(exploration_launch_file),
+#            launch_arguments={
+#                'namespace': LaunchConfiguration('namespace'),
+#                'prefix': LaunchConfiguration('prefix'),
+#                'observed_casualty_topic': LaunchConfiguration('observed_casualty_topic'),
+#                'robot_gps_topic': LaunchConfiguration('robot_gps_topic'),
+#                'exploration_request_topic': LaunchConfiguration('exploration_request_topic'),
+#                'state_selection_topic': LaunchConfiguration('state_selection_topic')
+#            }.items(),
+#        )
+#
+#    inspection_launch_file = get_package_share_directory('ugv_inspection_behavior_tree') + '/launch/executive.launch.py'
+#    inspection_launcher = IncludeLaunchDescription(
+#            PythonLaunchDescriptionSource(inspection_launch_file),
+#            launch_arguments={
+#                'namespace': LaunchConfiguration('namespace'),
+#                'prefix': LaunchConfiguration('prefix'),
+#                'milestone_in_topic':  LaunchConfiguration('milestone_in_topic'),
+#                'milestone_out_topic':  LaunchConfiguration('milestone_out_topic'),
+#                'inspection_plan_request_topic':  LaunchConfiguration('inspection_plan_request_topic'),
+#                'rd_request_topic' :  LaunchConfiguration('rd_request_topic'),
+#                'hemo_request_topic' :  LaunchConfiguration('hemo_request_topic'),
+#                'rd_nodestate_topic' :  LaunchConfiguration('rd_nodestate_topic'),
+#                'hemo_nodestate_topic' :  LaunchConfiguration('hemo_nodestate_topic')
+#            }.items(),
+#        )
 
 
     return LaunchDescription([
@@ -216,7 +216,7 @@ def generate_launch_description():
         observed_casualty_topic_arg,
         robot_gps_topic_arg,
         exploration_request_topic_arg,
-        exploration_launcher,
+        #exploration_launcher,
 
         milestone_in_topic_arg,
         milestone_out_topic_arg,
@@ -225,5 +225,5 @@ def generate_launch_description():
         hemo_request_topic_arg,
         rd_nodestate_topic_arg,
         hemo_nodestate_topic_arg,
-        inspection_launcher
+        #inspection_launcher
     ])

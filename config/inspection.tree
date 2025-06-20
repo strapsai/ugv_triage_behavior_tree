@@ -1,0 +1,14 @@
+->
+	|| 1
+		|| 1
+			[Requested Inspection Plan]
+			[Waiting for Milestone]
+		|| 1
+			->
+				(M_MULTIVIEW Received)
+				|| 1
+					[HEMO Algorithm]
+				[M_MULTIVIEW Clear]
+			->
+				(M_Stop Received)
+				[Reset Cycle]

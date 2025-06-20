@@ -1,8 +1,8 @@
 
-#include "ugv_top_behavior_tree/ugv_top_behavior_tree.hpp"
+#include "ugv_triage_behavior_tree/ugv_triage_behavior_tree.hpp"
 
 Behavior_Executive::Behavior_Executive()
-: Node("ugv_top_behavior_executive"),
+: Node("ugv_triage_behavior_executive"),
   init_topic{"sub_init"},
   estop_topic{"sub_estop"},
   current_state_topic{"current_state_int"},

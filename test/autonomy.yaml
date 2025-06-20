@@ -1,0 +1,124 @@
+session_name: autonomy
+windows:
+  - window_name: High-level Behavior
+    layout: tiled
+    panes:
+      - shell_command:
+        - echo "Initializing Highlevel Behavior Tree."
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch ugv_top_behavior_tree tree.launch.py \
+          namespace:=${ROBOT_NAME}/base/autonomy/behavior/ugv_top_level_behavior
+
+      - shell_command:
+        - echo "Initializing Highlevel Behavior Tree."
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch ugv_top_behavior_tree executive.launch.py \
+          namespace:=${ROBOT_NAME}/base/autonomy/behavior/ugv_top_level_behavior \
+          prefix:=/spot1/base/ \
+          state_selection_topic:=autonomy/behavior/ugv_top_level_tree/select_state \
+          explore_mode_topic:=autonomy/behavior/ugv_top_level_tree/in_explore_mode \
+          inspect_mode_topic:=autonomy/behavior/ugv_top_level_tree/in_inspect_mode \
+          current_state_topic:=autonomy/behavior/ugv_top_level_tree/current_state_int \
+          init_topic:=autonomy/behavior/ugv_top_level_tree/init_sub 
+
+
+  - window_name: Inspection Behavior
+    layout: tiled
+    panes:
+      - shell_command:
+        - echo "Initializing Inspection Behavior Tree."
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch ugv_inspection_behavior_tree tree.launch.py \
+          namespace:=${ROBOT_NAME}/base/autonomy/behavior/ugv_inspection_level_behavior
+
+      - shell_command:
+        - echo "Initializing Inspection Behavior Executive."
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch ugv_inspection_behavior_tree executive.launch.py \
+          namespace:=${ROBOT_NAME}/base/autonomy/behavior/ugv_inspection_level_behavior \
+          prefix:=/spot1/base/ \
+          inspect_mode_topic:=autonomy/behavior/ugv_top_level_tree/in_inspect_mode \
+          milestone_in_topic:=autonomy/planner/plan_executor/milestone_announce \
+          milestone_out_topic:=autonomy/planner/plan_executor/milestone_clearance \
+          inspection_plan_request_topic:=autonomy/planner/inspection_plan_request \
+          rd_request_topic:=algorithm/tripod/rd_request \
+          rd_nodestate_topic:=algorithm/tripod/rd_nodestate \
+          hemo_request_topic:=algorithm/hemobox/hemo_request \
+          hemo_nodestate_topic:=algorithm/hemobox/hemo_nodestate 
+
+
+  - window_name: Exploration Behavior
+    layout: tiled
+    panes:
+      - shell_command:
+        - echo "Initializing Exploration Behavior Tree."
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch ugv_exploration_behavior_tree tree.launch.py \
+          namespace:=${ROBOT_NAME}/base/autonomy/behavior/ugv_exploration_level_behavior
+
+      - shell_command:
+        - echo "Initializing Exploration Behavior Executive."
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch ugv_exploration_behavior_tree executive.launch.py \
+          namespace:=${ROBOT_NAME}/base/autonomy/behavior/ugv_exploration_level_behavior \
+          prefix:=/spot1/base/ \
+          explore_mode_topic:=autonomy/behavior/ugv_top_level_tree/in_explore_mode  \
+          exploration_request_topic:=autonomy/planner/exploration_plan_request \
+          robot_gps_topic:=gq7/gnss_1/llh_position \
+          observed_casualty_topic:=autonomy/behavior/exploration/observed_casualty \
+          state_selection_topic:=autonomy/behavior/ugv_top_level_tree/select_state
+
+
+  - window_name: Inspection Planner
+    layout: tiled
+    panes:
+      - shell_command:
+        - echo "Initializing Inspection Planner"
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch casualty_viewpoint_planner casualty_viewpoint_planner.launch.py \
+          namespace:=${ROBOT_NAME}/base \
+          subscriber_topic_name:=autonomy/planner/inspection_plan_request \
+          publisher_topic_name:=autonomy/planner/plan_executor/plan
+
+  - window_name: Exploration Planner
+    layout: tiled
+    panes:
+      - shell_command:
+        - echo "Initializing Exploration Planner"
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch exploration_planner exploration_planner.launch.py \
+          namespace:=${ROBOT_NAME}/base \
+          subscriber_topic_name:=autonomy/planner/exploration_plan_request \
+          publisher_topic_name:=autonomy/planner/plan_executor/plan
+
+
+  - window_name: Exploration Planner
+    layout: tiled
+    panes:
+      - shell_command:
+        - echo "Initializing Plan Executor"
+        - echo "Sourcing ROS 2 and workspace setup."
+        - |
+          ros2 launch plan_executor plan_executor.launch.py \
+          namespace:=${ROBOT_NAME}/base \
+          plan_topic:=autonomy/planner/plan_executor/plan \
+          body_pose_topic:=autonomy/slam/aft_mapped_to_init \
+          milestone_announce_topic:=autonomy/planner/plan_executor/milestone_announce \
+          milestone_clearance_topic:=autonomy/planner/plan_executor/milestone_clearance \
+          failure_topic:=autonomy/planner/plan_executor/failure \
+          interface_service_name:=autonomy/planner/plan_executor/interface \
+          waypoint_point:=/next_waypoint/odom 
+
+
+
+
+
+

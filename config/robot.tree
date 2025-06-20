@@ -1,0 +1,23 @@
+->
+	?
+		(System Init)
+		(Init Timeout)
+	<!>
+		(Estop)
+	?
+		->
+			(Idle Mode Req)
+			[Idle Mode]
+		->
+			(Manual Mode Req)
+			[Manual Mode]
+		->
+			(Explore Mode Req)
+			include $(find ugv_exploration_behavior_tree)/config/exploration.tree
+		->
+			(Approach Mode Req)
+			(Got Approach Target)
+			include $(find ugv_approach_behavior_tree)/config/approach.tree
+		->
+			(Inspect Mode Req)
+			include $(find ugv_inspection_behavior_tree)/config/inspection.tree

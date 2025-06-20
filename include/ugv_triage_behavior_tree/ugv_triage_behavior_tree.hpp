@@ -43,6 +43,8 @@ inline BehaviorState_t integer_to_behavior_state(uint8_t state) {
             return BehaviorState_t::EXPLORE;
         case 2:
             return BehaviorState_t::INSPECT;
+        case 3:
+            return BehaviorState_t::APPROACH;
         case 4:
             return BehaviorState_t::MANUAL;
         default:

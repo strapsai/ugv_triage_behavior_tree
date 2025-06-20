@@ -17,7 +17,7 @@ def generate_launch_description():
     config_path = os.path.join(
         get_package_share_directory('ugv_top_behavior_tree'),
         'config',
-        'robot.tree'
+        'toplevel.tree'
     )
 
     # Define the behavior tree node with namespace set directly

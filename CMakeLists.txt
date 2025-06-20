@@ -22,6 +22,8 @@ find_package(base_node_msgs REQUIRED)
 find_package(humanflow_msgs REQUIRED)
 find_package(geographic_utils REQUIRED)
 
+find_package(plan_executor_msgs REQUIRED)
+
 set(LIB_NAME ${PROJECT_NAME})
 
 add_library(${LIB_NAME}
@@ -43,6 +45,8 @@ ament_target_dependencies(${LIB_NAME}
   base_node_msgs
   humanflow_msgs
   geographic_utils
+
+  plan_executor_msgs
 )
 
 
@@ -65,6 +69,7 @@ ament_export_dependencies(
   rclcpp 
   std_msgs 
   behavior_tree_msgs 
+
 )
 
 add_executable(ugv_triage_behavior_tree_node 

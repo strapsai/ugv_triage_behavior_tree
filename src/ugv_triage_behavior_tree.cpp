@@ -14,6 +14,14 @@ Behavior_Executive::Behavior_Executive()
   exploration_request_topic{"exploration_request_topic"},
   observed_casualty_topic{"observed_casualty_topic"},
   robot_gps_topic{"robot_gps_topic"},
+  
+  milestone_in_topic{"milestone_in_topic"},
+  milestone_out_topic{"milestone_out_topic"},
+  plan_request_topic{"plan_request_topic"},
+  rd_request_topic{"rd_request_topic"},
+  hemo_request_topic{"hemo_request_topic"},
+  rd_nodestate_topic{"rd_nodestate_topic"},
+  hemo_nodestate_topic{"hemo_nodestate_topic"},
 
   curr_mode(BehaviorState_t::IDLE),
   init_timeout_ms(5000),
@@ -32,6 +40,14 @@ Behavior_Executive::Behavior_Executive()
     this->declare_parameter("exploration_request_topic", "exploration_request_topic");
     this->declare_parameter("observed_casualty_topic", "observed_casualty_topic");
     this->declare_parameter("robot_gps_topic", "robot_gps_topic");
+
+    this->declare_parameter("milestone_in_topic", "milestone_in_topic");
+    this->declare_parameter("milestone_out_topic", "milestone_out_topic");
+    this->declare_parameter("plan_request_topic", "plan_request_topic");
+    this->declare_parameter("rd_request_topic", "rd_request_topic");
+    this->declare_parameter("hemo_request_topic", "hemo_request_topic");
+    this->declare_parameter("rd_nodestate_topic", "rd_nodestate_topic");
+    this->declare_parameter("hemo_nodestate_topic", "hemo_nodestate_topic");
 }
 
 Behavior_Executive::~Behavior_Executive() {
@@ -71,6 +87,22 @@ void Behavior_Executive::initialize() {
     RCLCPP_INFO(this->get_logger(), "Observed Casualty Topic: %s", observed_casualty_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Robot GPS Position Topic: %s", robot_gps_topic.c_str());
 
+    this->get_parameter("milestone_in_topic", milestone_in_topic);
+    this->get_parameter("milestone_out_topic", milestone_out_topic);
+    this->get_parameter("plan_request_topic", plan_request_topic);
+    this->get_parameter("rd_request_topic", rd_request_topic);
+    this->get_parameter("hemo_request_topic", hemo_request_topic);
+    this->get_parameter("rd_nodestate_topic", rd_nodestate_topic);
+    this->get_parameter("hemo_nodestate_topic", hemo_nodestate_topic);
+    RCLCPP_INFO(this->get_logger(), "Milestone Receive Topic: %s", milestone_in_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "Milestone Clear Topic: %s", milestone_out_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "Plan RequestTopic: %s", plan_request_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "RD Request Topic: %s", rd_request_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "HEMO Request Topic: %s", hemo_request_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "RD Node State Topic: %s", rd_nodestate_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "HEMO Node State Topic: %s", hemo_nodestate_topic.c_str());
+
+
     RCLCPP_INFO(this->get_logger(), "Behavior Executive Node Initialized");
 
     // ==================================================
@@ -101,8 +133,11 @@ void Behavior_Executive::initialize() {
     condition_approach_mode_req = std::make_shared<bt::Condition>("Approach Mode Req", this);
     conditions_.push_back(condition_approach_mode_req);
 
-    condition_mode_selected = std::make_shared<bt::Condition>("Exploration Mode Selected", this);
-    conditions_.push_back(condition_mode_selected);
+    condition_m_multiview_received = std::make_shared<bt::Condition>("M_MULTIVIEW Received", this);
+    conditions_.push_back(condition_m_multiview_received);
+
+    condition_m_stop_received = std::make_shared<bt::Condition>("M_Stop Received", this);
+    conditions_.push_back(condition_m_stop_received);
 
     // ==================================================
     // Initialize the actions.
@@ -125,6 +160,25 @@ void Behavior_Executive::initialize() {
     action_go_to_inspection = std::make_shared<bt::Action>("Go to Inspection", this);
     actions_.push_back(action_go_to_inspection);
 
+    action_request_plan = std::make_shared<bt::Action>("Requested Inspection Plan", this);
+    actions_.push_back(action_request_plan);
+
+    action_wait_milestone = std::make_shared<bt::Action>("Waiting for Milestone", this);
+    actions_.push_back(action_wait_milestone);
+
+    action_RD = std::make_shared<bt::Action>("RD Algorithm", this);
+    actions_.push_back(action_RD);
+
+    action_HEMO = std::make_shared<bt::Action>("HEMO Algorithm", this);
+    actions_.push_back(action_HEMO);
+
+    action_multiview_milestone_clear = std::make_shared<bt::Action>("M_MULTIVIEW CLear", this);
+    actions_.push_back(action_multiview_milestone_clear);
+
+    action_reset = std::make_shared<bt::Action>("Reset Cycle", this);
+    actions_.push_back(action_reset);
+
+
     // ==================================================
     // Initialize the publishers.
     // ==================================================
@@ -134,6 +188,12 @@ void Behavior_Executive::initialize() {
     pub_in_manual_mode = create_publisher<std_msgs::msg::Bool>(manual_mode_topic, 10);
 
     pub_exploration_request = create_publisher<std_msgs::msg::Bool>(exploration_request_topic, 10);
+
+    pub_plan_request = create_publisher<std_msgs::msg::Bool>(plan_request_topic, 10);
+    pub_RD_request = create_publisher<base_node_msgs::msg::WorkingRequest>(rd_request_topic, 10);
+    pub_HEMO_request = create_publisher<base_node_msgs::msg::WorkingRequest>(hemo_request_topic, 10);
+    pub_milestone = create_publisher<plan_executor_msgs::msg::Milestone>(milestone_out_topic, 10);
+
     // ==================================================
     // Initialize the subscribers.
     // ==================================================
@@ -156,6 +216,18 @@ void Behavior_Executive::initialize() {
     sub_robot_gps = create_subscription<sensor_msgs::msg::NavSatFix>(
         robot_gps_topic, 10,
         std::bind(&Behavior_Executive::callback_robot_gps, this, std::placeholders::_1));
+
+    sub_milestone = create_subscription<plan_executor_msgs::msg::Milestone>(
+        milestone_in_topic, 10,
+        std::bind(&Behavior_Executive::callback_milestone, this, std::placeholders::_1));
+
+    sub_rd_nodestate = create_subscription<base_node_msgs::msg::NodeState>(
+        rd_nodestate_topic, 10,
+        std::bind(&Behavior_Executive::callback_rd, this, std::placeholders::_1));
+
+    sub_hemo_nodestate = create_subscription<base_node_msgs::msg::NodeState>(
+        hemo_nodestate_topic, 10,
+        std::bind(&Behavior_Executive::callback_hemo, this, std::placeholders::_1));
 
 
     // ==================================================
@@ -286,16 +358,6 @@ void Behavior_Executive::prepare_execute_units() {
         }
     });
 
-    execution_units_.push_back([this]() {
-        if(condition_mode_selected->get()) {
-            RCLCPP_INFO_STREAM_THROTTLE(
-                this->get_logger(), *this->get_clock(), 1000, "Exploration Mode Activated...");
-        } else {
-            RCLCPP_INFO_STREAM_THROTTLE(
-                this->get_logger(), *this->get_clock(), 1000, "Exploration Mode Not Active...");
-        }
-    });
-
     // Explore Area.
     execution_units_.push_back([this]() {
         if ( action_find_casualty->is_active() ) {
@@ -345,6 +407,145 @@ void Behavior_Executive::prepare_execute_units() {
             }
         }
     });
+
+
+    execution_units_.push_back([this]() {
+        if(condition_m_multiview_received->get()) {
+            RCLCPP_INFO_STREAM_THROTTLE(
+                this->get_logger(), *this->get_clock(), 1000, "Multiview Milestone received.");
+        }
+
+        if(condition_m_stop_received->get()) {
+            RCLCPP_INFO_STREAM_THROTTLE(
+                this->get_logger(), *this->get_clock(), 1000, "Inspection Stop Milestone received.");
+        }
+    });
+
+    execution_units_.push_back([this]() {
+        if ( action_request_plan->is_active() ) {
+            if ( action_request_plan->active_has_changed() ) {
+                action_request_plan->set_running();
+            }
+            
+            if ( action_request_plan->is_running() ) {
+                RCLCPP_INFO_STREAM_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000, "Requesting plan...");
+                std_msgs::msg::Bool msg;
+                msg.data = true;
+                pub_plan_request->publish(msg);
+
+                //action_request_plan->set_success();
+            } else if ( action_request_plan->is_success() ){
+                RCLCPP_INFO_STREAM_THROTTLE(
+              this->get_logger(), *this->get_clock(), 1000, "Request for plan sent.");
+
+            }
+        }
+
+        if ( action_wait_milestone->is_active() ) {
+            if ( action_wait_milestone->active_has_changed() ) {
+                action_wait_milestone->set_running();
+            }
+            
+            if ( action_wait_milestone->is_running() ) {
+                RCLCPP_INFO_STREAM_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000, "Waiting for Milestone...");
+
+            }
+        }
+
+
+    });
+
+    execution_units_.push_back([this]() {
+        if ( action_RD->is_active() ) {
+            if ( action_RD->active_has_changed() ) {
+                action_RD->set_running();
+            }
+            
+            if ( action_RD->is_running() ) {
+                RCLCPP_INFO_STREAM_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000, "Running RD...");
+
+                base_node_msgs::msg::WorkingRequest msg;
+                msg.request = msg.RUNNING;
+                pub_RD_request->publish(msg);
+
+                if (rd_obtained){
+                  action_RD->set_success();
+                }
+            } else if ( action_RD->is_success() ){
+                RCLCPP_INFO_STREAM_THROTTLE(
+              this->get_logger(), *this->get_clock(), 1000, "RD obtained.");
+            }
+        }
+
+        if ( action_HEMO->is_active() ) {
+            if ( action_HEMO->active_has_changed() ) {
+                action_HEMO->set_running();
+            }
+            
+            if ( action_HEMO->is_running() ) {
+                RCLCPP_INFO_STREAM_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000, "Running HEMO...");
+
+                base_node_msgs::msg::WorkingRequest msg;
+                msg.request = msg.RUNNING;
+                pub_HEMO_request->publish(msg);
+
+                if (hemo_obtained){
+                  action_HEMO->set_success();
+                }
+            } else if ( action_HEMO->is_success() ){
+                RCLCPP_INFO_STREAM_THROTTLE(
+              this->get_logger(), *this->get_clock(), 1000, "HEMO obtained.");
+            }
+        }
+
+        if ( action_multiview_milestone_clear->is_active() ) {
+            if ( action_multiview_milestone_clear->active_has_changed() ) {
+                action_multiview_milestone_clear->set_running();
+            }
+            
+            if ( action_multiview_milestone_clear->is_running() ) {
+                RCLCPP_INFO_STREAM_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000, "Clearing MULTIVIEW milestone...");
+
+
+                plan_executor_msgs::msg::Milestone msg;
+                clear_milstone(msg.MULTIVIEW_VIEWPOINT);
+
+                hemo_obtained = false;
+                rd_obtained = false;
+                action_multiview_milestone_clear->set_success();
+            } else if ( action_multiview_milestone_clear->is_success() ){
+                RCLCPP_INFO_STREAM_THROTTLE(
+              this->get_logger(), *this->get_clock(), 1000, "HEMO obtained.");
+            }
+        }
+    });
+
+    execution_units_.push_back([this]() {
+        if ( action_reset->is_active() ) {
+            if ( action_reset->active_has_changed() ) {
+                action_reset->set_running();
+            }
+            
+            if ( action_reset->is_running() ) {
+                RCLCPP_INFO_STREAM_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000, "Resetting Inspection...");
+
+
+                plan_executor_msgs::msg::Milestone msg;
+                clear_milstone(msg.MULTIVIEW_VIEWPOINT);
+
+                action_reset->set_success();
+            } else if ( action_reset->is_success() ){
+                RCLCPP_INFO_STREAM_THROTTLE(
+              this->get_logger(), *this->get_clock(), 1000, "Inspection Reset.");
+            }
+        }
+    });
 }
 
 void Behavior_Executive::execute() {
@@ -390,13 +591,6 @@ void Behavior_Executive::callback_estop(std_msgs::msg::Bool msg){
   condition_estop->set(msg.data); 
 }
 
-void Behavior_Executive::callback_mode_select(std_msgs::msg::Bool msg){
-    if(msg.data == true) {
-      condition_mode_selected->set(true); 
-    } else {
-      condition_mode_selected->set(false);
-    }
-}
 
 void Behavior_Executive::callback_casualties(humanflow_msgs::msg::ReIDPersonArray msg){
   if (action_find_casualty->is_active() && action_find_casualty->is_running()){
@@ -431,6 +625,96 @@ void Behavior_Executive::callback_robot_gps(sensor_msgs::msg::NavSatFix msg){
   robot_coordinates_obtained = true;
   return;
 }
+
+void Behavior_Executive::callback_rd(base_node_msgs::msg::NodeState msg){
+  int curr_state = (msg.state & msg.LAST_PROC_BIT_MASK);
+  if (( curr_state > 0) && (rd_inspection_state_prev == 0) ){
+    rd_obtained = true;
+  }
+  rd_inspection_state_prev = curr_state;
+}
+
+void Behavior_Executive::callback_hemo(base_node_msgs::msg::NodeState msg){
+  int curr_state = (msg.state & msg.LAST_PROC_BIT_MASK);
+  if (( curr_state > 0) && (hemo_inspection_state_prev == 0) ){
+    hemo_obtained = true;
+  }
+  hemo_inspection_state_prev = curr_state;
+}
+
+
+
+void Behavior_Executive::callback_milestone(plan_executor_msgs::msg::Milestone msg){
+  if (action_wait_milestone->is_active() && (action_wait_milestone->is_running())){
+    int index = msg.index;
+    for ( auto & ID : msg.milestones ){
+      RCLCPP_INFO(this->get_logger(), "RECEIVED MILESTONE ID: %d", ID);
+      bool had_milestone = false;
+      for ( auto & ms : milestones ){
+        if (ms.first == ID){
+          had_milestone = true;
+          RCLCPP_ERROR(this->get_logger(), "RECEIVED MILESTONE WE ALREADY HAD: ID: %d, PREV_INDEX: %d, NEW_INDEX: %d", ID, ms.second ,index);
+        }
+      }
+      if (!had_milestone){
+        milestones.push_back({ID,index});
+        switch (ID) {
+          case msg.MULTIVIEW_VIEWPOINT: {
+                                          condition_m_multiview_received->set(true);
+                                          break;
+                                        }
+          case msg.INSPECTION_FINISHED: {
+                                          condition_m_stop_received->set(true);
+                                          break;
+                                        }
+          default:
+                                        RCLCPP_INFO(this->get_logger(), "Received milestone of type: ID: %d, Index: %d. I don't have a behavior for this one.", ID, index);
+        }
+      }
+
+
+    }
+
+  }
+
+}
+
+
+void Behavior_Executive::clear_milstone(int id){
+  plan_executor_msgs::msg::Milestone msg;
+  int index = -1;
+  for (auto it = milestones.begin(); it != milestones.end();) {
+    if ((*it).first == id) { // ID matches
+      index = (*it).second;
+        it = milestones.erase(it); //remove milestone from list
+        break;
+    } else {
+      ++it;
+    }
+  }
+  if (index < 0){
+    RCLCPP_ERROR(this->get_logger(), "CANNOT CLEAR MILESTONE ID: %d, IT WAS NOT RECEIVED BEFORE", id);
+  }
+
+  msg.type = msg.CLEAR;
+  msg.milestones = {id};
+  msg.node_name = "ugv_inspection_behavior_executive";
+  msg.description = "Inspeciton behavior tree clearing the milestone.";
+  msg.index = index;
+  pub_milestone->publish(msg);
+
+  switch (id) {
+    case msg.MULTIVIEW_VIEWPOINT: {
+                    condition_m_multiview_received->set(false);
+                    break;
+                  }
+    case msg.INSPECTION_FINISHED: {
+                      condition_m_stop_received->set(false);
+                      break;
+                    }
+  }
+}
+
 
 double Behavior_Executive::get_distance(sensor_msgs::msg::NavSatFix a, sensor_msgs::msg::NavSatFix b){ 
   auto a_utm = geographic_utils::latlon_to_utm(a.latitude, a.longitude);
@@ -495,6 +779,7 @@ void Behavior_Executive::timer_callback_init() {
 
     RCLCPP_INFO(get_logger(), "Init Timer Timeout");
 }
+
 
 void Behavior_Executive::timer_callback_execution(){
     execute();

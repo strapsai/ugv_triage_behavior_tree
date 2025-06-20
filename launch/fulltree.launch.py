@@ -157,6 +157,14 @@ def generate_launch_description():
                 'observed_casualty_topic': [LaunchConfiguration("prefix"),LaunchConfiguration('observed_casualty_topic')],
                 'robot_gps_topic': [LaunchConfiguration("prefix"),LaunchConfiguration('robot_gps_topic')],
                 'exploration_request_topic': [LaunchConfiguration("prefix"),LaunchConfiguration('exploration_request_topic')],
+
+                'milestone_in_topic': [LaunchConfiguration('prefix'), LaunchConfiguration('milestone_in_topic')],
+                'milestone_out_topic': [LaunchConfiguration('prefix'), LaunchConfiguration('milestone_out_topic')],
+                'plan_request_topic': [LaunchConfiguration('prefix'), LaunchConfiguration('inspection_plan_request_topic')],
+                'rd_request_topic' : [LaunchConfiguration('prefix'), LaunchConfiguration('rd_request_topic')],
+                'hemo_request_topic' : [LaunchConfiguration('prefix'), LaunchConfiguration('hemo_request_topic')],
+                'rd_nodestate_topic' : [LaunchConfiguration('prefix'), LaunchConfiguration('rd_nodestate_topic')],
+                'hemo_nodestate_topic' : [LaunchConfiguration('prefix'), LaunchConfiguration('hemo_nodestate_topic')]
             }
         ]
     )
@@ -217,11 +225,6 @@ def generate_launch_description():
         robot_gps_topic_arg,
         exploration_request_topic_arg,
 
-        behavior_tree_node,
-
-
-        #exploration_launcher,
-
         milestone_in_topic_arg,
         milestone_out_topic_arg,
         inspection_plan_request_topic_arg,
@@ -229,7 +232,8 @@ def generate_launch_description():
         hemo_request_topic_arg,
         rd_nodestate_topic_arg,
         hemo_nodestate_topic_arg,
-        #inspection_launcher
+
+        behavior_tree_node,
 
         tree_launcher,
     ])

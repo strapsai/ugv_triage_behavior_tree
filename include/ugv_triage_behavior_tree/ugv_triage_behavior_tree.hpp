@@ -25,6 +25,9 @@
 #include <humanflow_msgs/msg/re_id_person_array.hpp>
 #include <geographic_utils/geographic_utils.hpp>
 
+#include <plan_executor_msgs/msg/milestone.hpp>
+#include <base_node_msgs/msg/node_state.hpp>
+
 #define INSPECTABLE_DISTANCE 3.0
 
 enum class BehaviorState_t : uint8_t {
@@ -73,9 +76,13 @@ private:
     void timer_callback_init();
     
     
-    void callback_mode_select(std_msgs::msg::Bool msg);
     void callback_casualties(humanflow_msgs::msg::ReIDPersonArray);
     void callback_robot_gps(sensor_msgs::msg::NavSatFix);
+
+    void callback_milestone(plan_executor_msgs::msg::Milestone msg);
+    void callback_rd(base_node_msgs::msg::NodeState msg);
+    void callback_hemo(base_node_msgs::msg::NodeState msg);
+    void clear_milstone(int id);
     
 
     double get_distance(sensor_msgs::msg::NavSatFix a, sensor_msgs::msg::NavSatFix b);
@@ -95,8 +102,9 @@ private:
     std::shared_ptr<bt::Condition> condition_inspect_mode_req; // Inspect Mode Requested.
     std::shared_ptr<bt::Condition> condition_explore_mode_req;   // Explore Mode Requested.
     std::shared_ptr<bt::Condition> condition_approach_mode_req;   // Approach Mode Requested.
-
-    std::shared_ptr<bt::Condition> condition_mode_selected;
+    
+    std::shared_ptr<bt::Condition> condition_m_multiview_received;
+    std::shared_ptr<bt::Condition> condition_m_stop_received;
 
     // Actions
     std::shared_ptr<bt::Action> action_idle_mode;
@@ -107,6 +115,12 @@ private:
     std::shared_ptr<bt::Action> action_find_casualty;
     std::shared_ptr<bt::Action> action_go_to_inspection;
 
+    std::shared_ptr<bt::Action> action_request_plan;
+    std::shared_ptr<bt::Action> action_wait_milestone;
+    std::shared_ptr<bt::Action> action_RD;
+    std::shared_ptr<bt::Action> action_HEMO;
+    std::shared_ptr<bt::Action> action_multiview_milestone_clear;
+    std::shared_ptr<bt::Action> action_reset;
     // Publishers
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr pub_current_state_int;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_in_explore_mode;
@@ -115,6 +129,11 @@ private:
 
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_exploration_request;
 
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_inspecting_target;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_plan_request;
+    rclcpp::Publisher<base_node_msgs::msg::WorkingRequest>::SharedPtr pub_RD_request;
+    rclcpp::Publisher<base_node_msgs::msg::WorkingRequest>::SharedPtr pub_HEMO_request;
+    rclcpp::Publisher<plan_executor_msgs::msg::Milestone>::SharedPtr pub_milestone;
     // Subscribers
     rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr sub_state;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr sub_init;
@@ -123,6 +142,9 @@ private:
     rclcpp::Subscription<humanflow_msgs::msg::ReIDPersonArray>::SharedPtr sub_observed_casualties;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_robot_gps;
 
+    rclcpp::Subscription<plan_executor_msgs::msg::Milestone>::SharedPtr sub_milestone;
+    rclcpp::Subscription<base_node_msgs::msg::NodeState>::SharedPtr sub_rd_nodestate;
+    rclcpp::Subscription<base_node_msgs::msg::NodeState>::SharedPtr sub_hemo_nodestate;
     // Timers
     rclcpp::TimerBase::SharedPtr timer_execution;
     rclcpp::TimerBase::SharedPtr timer_init_action;
@@ -141,6 +163,15 @@ private:
     std::string observed_casualty_topic;
     std::string robot_gps_topic;
 
+    std::string milestone_in_topic;
+    std::string milestone_out_topic;
+    std::string inspecting_target_topic;
+    std::string plan_request_topic;
+    std::string rd_request_topic;
+    std::string hemo_request_topic;
+    std::string rd_nodestate_topic;
+    std::string hemo_nodestate_topic;
+
     BehaviorState_t curr_mode;
 
     int init_timeout_ms;
@@ -151,6 +182,14 @@ private:
     sensor_msgs::msg::NavSatFix latest_robot_gps;
 
     bool reachable_casualty_found=false;
+
+    std::list<std::pair<int, int>> milestones; //ID, index
+
+    bool rd_inspection_state_prev = -1;
+    bool rd_obtained = false;
+
+    int hemo_inspection_state_prev = -1;
+    int hemo_obtained = false;
     
     bool initialized_;
 };

@@ -22,6 +22,8 @@
   <depend>humanflow_msgs</depend>
   <depend>geographic_utils</depend>
 
+  <depend>plan_executor_msgs</depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>

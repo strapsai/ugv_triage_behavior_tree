@@ -11,7 +11,6 @@ Behavior_Executive::Behavior_Executive()
   manual_mode_topic{"in_manual_mode"},
   state_selection_topic{"state_selection_topic"},
 
-  exploration_mode_activate_topic{"mode_select_bool"},
   exploration_request_topic{"exploration_request_topic"},
   observed_casualty_topic{"observed_casualty_topic"},
   robot_gps_topic{"robot_gps_topic"},
@@ -30,7 +29,6 @@ Behavior_Executive::Behavior_Executive()
     this->declare_parameter("manual_mode_topic", "in_manual_mode");
     this->declare_parameter("state_selection_topic", "state_selection_topic");
 
-    this->declare_parameter("exploration_mode_activate_topic", "mode_select_bool");
     this->declare_parameter("exploration_request_topic", "exploration_request_topic");
     this->declare_parameter("observed_casualty_topic", "observed_casualty_topic");
     this->declare_parameter("robot_gps_topic", "robot_gps_topic");
@@ -65,16 +63,14 @@ void Behavior_Executive::initialize() {
     RCLCPP_INFO(this->get_logger(), "In Inspect Mode Topic: %s", inspect_mode_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "In Manual Mode Topic: %s", manual_mode_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "State Selection Topic: %s", state_selection_topic.c_str());
-    RCLCPP_INFO(this->get_logger(), "Behavior Executive Node Initialized");
 
-    this->get_parameter("exploration_mode_activate_topic", exploration_mode_activate_topic);
     this->get_parameter("exploration_request_topic", exploration_request_topic);
     this->get_parameter("observed_casualty_topic", observed_casualty_topic);
     this->get_parameter("robot_gps_topic", robot_gps_topic);
-    RCLCPP_INFO(this->get_logger(), "Current State Topic: %s", exploration_mode_activate_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Exploration Request Topic: %s", exploration_request_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Observed Casualty Topic: %s", observed_casualty_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Robot GPS Position Topic: %s", robot_gps_topic.c_str());
+
     RCLCPP_INFO(this->get_logger(), "Behavior Executive Node Initialized");
 
     // ==================================================

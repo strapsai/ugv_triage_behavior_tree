@@ -152,7 +152,11 @@ def generate_launch_description():
                 #'explore_mode_topic': [LaunchConfiguration('prefix'), LaunchConfiguration('explore_mode_topic')],
                 #'inspect_mode_topic': [LaunchConfiguration('prefix'), LaunchConfiguration('inspect_mode_topic')],
                 'state_selection_topic': [LaunchConfiguration('prefix'),LaunchConfiguration('state_selection_topic')],
-                'manual_mode_topic' :  [LaunchConfiguration('prefix'),LaunchConfiguration('manual_mode_topic')]
+                'manual_mode_topic' :  [LaunchConfiguration('prefix'),LaunchConfiguration('manual_mode_topic')],
+
+                'observed_casualty_topic': [LaunchConfiguration("prefix"),LaunchConfiguration('observed_casualty_topic')],
+                'robot_gps_topic': [LaunchConfiguration("prefix"),LaunchConfiguration('robot_gps_topic')],
+                'exploration_request_topic': [LaunchConfiguration("prefix"),LaunchConfiguration('exploration_request_topic')],
             }
         ]
     )
@@ -209,13 +213,13 @@ def generate_launch_description():
         state_selection_topic_arg,
         manual_mode_topic_arg,
 
-        behavior_tree_node,
-
-        tree_launcher,
-
         observed_casualty_topic_arg,
         robot_gps_topic_arg,
         exploration_request_topic_arg,
+
+        behavior_tree_node,
+
+
         #exploration_launcher,
 
         milestone_in_topic_arg,
@@ -226,4 +230,6 @@ def generate_launch_description():
         rd_nodestate_topic_arg,
         hemo_nodestate_topic_arg,
         #inspection_launcher
+
+        tree_launcher,
     ])

@@ -21,12 +21,17 @@
 // msgs
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/u_int8.hpp>
+#include <base_node_msgs/msg/working_request.hpp>
+#include <humanflow_msgs/msg/re_id_person_array.hpp>
+#include <geographic_utils/geographic_utils.hpp>
 
+#define INSPECTABLE_DISTANCE 3.0
 
 enum class BehaviorState_t : uint8_t {
     IDLE    = 0,
     EXPLORE = 1,
     INSPECT = 2,
+    APPROACH = 3,
     MANUAL = 4
 };
 
@@ -65,7 +70,14 @@ private:
     void timer_callback_execution();
     void timer_callback_init();
     
+    
+    void callback_mode_select(std_msgs::msg::Bool msg);
+    void callback_casualties(humanflow_msgs::msg::ReIDPersonArray);
+    void callback_robot_gps(sensor_msgs::msg::NavSatFix);
+    
 
+    double get_distance(sensor_msgs::msg::NavSatFix a, sensor_msgs::msg::NavSatFix b);
+    void switch_mode(BehaviorState_t state);
 private:
 
     std::vector<std::shared_ptr<bt::Condition>> conditions_;
@@ -80,6 +92,9 @@ private:
     std::shared_ptr<bt::Condition> condition_manual_mode_req;   // Manual Mode Requested.
     std::shared_ptr<bt::Condition> condition_inspect_mode_req; // Inspect Mode Requested.
     std::shared_ptr<bt::Condition> condition_explore_mode_req;   // Explore Mode Requested.
+    std::shared_ptr<bt::Condition> condition_approach_mode_req;   // Approach Mode Requested.
+
+    std::shared_ptr<bt::Condition> condition_mode_selected;
 
     // Actions
     std::shared_ptr<bt::Action> action_idle_mode;
@@ -87,16 +102,24 @@ private:
     std::shared_ptr<bt::Action> action_inspect_mode;
     std::shared_ptr<bt::Action> action_explore_mode;
 
+    std::shared_ptr<bt::Action> action_find_casualty;
+    std::shared_ptr<bt::Action> action_go_to_inspection;
+
     // Publishers
     rclcpp::Publisher<std_msgs::msg::UInt8>::SharedPtr pub_current_state_int;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_in_explore_mode;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_in_inspect_mode;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_in_manual_mode;
 
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_exploration_request;
+
     // Subscribers
     rclcpp::Subscription<std_msgs::msg::UInt8>::SharedPtr sub_state;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr sub_init;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr sub_estop;
+
+    rclcpp::Subscription<humanflow_msgs::msg::ReIDPersonArray>::SharedPtr sub_observed_casualties;
+    rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_robot_gps;
 
     // Timers
     rclcpp::TimerBase::SharedPtr timer_execution;
@@ -111,10 +134,21 @@ private:
     std::string manual_mode_topic;
     std::string state_selection_topic;
 
+    std::string exploration_mode_activate_topic;
+    std::string exploration_request_topic;
+    std::string observed_casualty_topic;
+    std::string robot_gps_topic;
+
     BehaviorState_t curr_mode;
 
     int init_timeout_ms;
     bool system_init_timer_running;
+
+
+    bool robot_coordinates_obtained = false;
+    sensor_msgs::msg::NavSatFix latest_robot_gps;
+
+    bool reachable_casualty_found=false;
     
     bool initialized_;
 };

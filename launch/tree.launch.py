@@ -15,7 +15,7 @@ def generate_launch_description():
 
     # Resolve the config path for robot.tree
     config_path = os.path.join(
-        get_package_share_directory('ugv_top_behavior_tree'),
+        get_package_share_directory('ugv_triage_behavior_tree'),
         'config',
         'toplevel.tree'
     )

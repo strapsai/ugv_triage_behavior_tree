@@ -11,10 +11,16 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
+
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(behavior_tree_msgs REQUIRED)
 find_package(behavior_tree REQUIRED)
+
+find_package(base_node_msgs REQUIRED)
+find_package(humanflow_msgs REQUIRED)
+find_package(geographic_utils REQUIRED)
 
 set(LIB_NAME ${PROJECT_NAME})
 
@@ -33,6 +39,10 @@ ament_target_dependencies(${LIB_NAME}
   std_msgs
   behavior_tree_msgs
   behavior_tree
+
+  base_node_msgs
+  humanflow_msgs
+  geographic_utils
 )
 
 

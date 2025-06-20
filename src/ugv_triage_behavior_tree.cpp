@@ -10,6 +10,12 @@ Behavior_Executive::Behavior_Executive()
   inspect_mode_topic{"in_inspect_mode"},
   manual_mode_topic{"in_manual_mode"},
   state_selection_topic{"state_selection_topic"},
+
+  exploration_mode_activate_topic{"mode_select_bool"},
+  exploration_request_topic{"exploration_request_topic"},
+  observed_casualty_topic{"observed_casualty_topic"},
+  robot_gps_topic{"robot_gps_topic"},
+
   curr_mode(BehaviorState_t::IDLE),
   init_timeout_ms(5000),
   system_init_timer_running(false),
@@ -23,6 +29,11 @@ Behavior_Executive::Behavior_Executive()
     this->declare_parameter("inspect_mode_topic", "in_inspect_mode");
     this->declare_parameter("manual_mode_topic", "in_manual_mode");
     this->declare_parameter("state_selection_topic", "state_selection_topic");
+
+    this->declare_parameter("exploration_mode_activate_topic", "mode_select_bool");
+    this->declare_parameter("exploration_request_topic", "exploration_request_topic");
+    this->declare_parameter("observed_casualty_topic", "observed_casualty_topic");
+    this->declare_parameter("robot_gps_topic", "robot_gps_topic");
 }
 
 Behavior_Executive::~Behavior_Executive() {
@@ -56,6 +67,16 @@ void Behavior_Executive::initialize() {
     RCLCPP_INFO(this->get_logger(), "State Selection Topic: %s", state_selection_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Behavior Executive Node Initialized");
 
+    this->get_parameter("exploration_mode_activate_topic", exploration_mode_activate_topic);
+    this->get_parameter("exploration_request_topic", exploration_request_topic);
+    this->get_parameter("observed_casualty_topic", observed_casualty_topic);
+    this->get_parameter("robot_gps_topic", robot_gps_topic);
+    RCLCPP_INFO(this->get_logger(), "Current State Topic: %s", exploration_mode_activate_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "Exploration Request Topic: %s", exploration_request_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "Observed Casualty Topic: %s", observed_casualty_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "Robot GPS Position Topic: %s", robot_gps_topic.c_str());
+    RCLCPP_INFO(this->get_logger(), "Behavior Executive Node Initialized");
+
     // ==================================================
     // Initialize the conditions.
     // ==================================================
@@ -81,6 +102,11 @@ void Behavior_Executive::initialize() {
     condition_explore_mode_req = std::make_shared<bt::Condition>("Explore Mode Req", this);
     conditions_.push_back(condition_explore_mode_req);
 
+    condition_approach_mode_req = std::make_shared<bt::Condition>("Approach Mode Req", this);
+    conditions_.push_back(condition_approach_mode_req);
+
+    condition_mode_selected = std::make_shared<bt::Condition>("Exploration Mode Selected", this);
+    conditions_.push_back(condition_mode_selected);
 
     // ==================================================
     // Initialize the actions.
@@ -97,6 +123,12 @@ void Behavior_Executive::initialize() {
     action_explore_mode = std::make_shared<bt::Action>("Explore Mode", this);
     actions_.push_back(action_explore_mode);
 
+    action_find_casualty = std::make_shared<bt::Action>("Find Casualty", this);
+    actions_.push_back(action_find_casualty);
+    
+    action_go_to_inspection = std::make_shared<bt::Action>("Go to Inspection", this);
+    actions_.push_back(action_go_to_inspection);
+
     // ==================================================
     // Initialize the publishers.
     // ==================================================
@@ -105,6 +137,7 @@ void Behavior_Executive::initialize() {
     pub_in_inspect_mode = create_publisher<std_msgs::msg::Bool>(inspect_mode_topic, 10);
     pub_in_manual_mode = create_publisher<std_msgs::msg::Bool>(manual_mode_topic, 10);
 
+    pub_exploration_request = create_publisher<std_msgs::msg::Bool>(exploration_request_topic, 10);
     // ==================================================
     // Initialize the subscribers.
     // ==================================================
@@ -119,6 +152,15 @@ void Behavior_Executive::initialize() {
     sub_estop = create_subscription<std_msgs::msg::Bool>(
         estop_topic, 10,
         std::bind(&Behavior_Executive::callback_estop, this, std::placeholders::_1));
+
+    sub_observed_casualties = create_subscription<humanflow_msgs::msg::ReIDPersonArray>(
+        observed_casualty_topic, 10,
+        std::bind(&Behavior_Executive::callback_casualties, this, std::placeholders::_1));
+
+    sub_robot_gps = create_subscription<sensor_msgs::msg::NavSatFix>(
+        robot_gps_topic, 10,
+        std::bind(&Behavior_Executive::callback_robot_gps, this, std::placeholders::_1));
+
 
     // ==================================================
     // Initialize the timers.
@@ -247,6 +289,66 @@ void Behavior_Executive::prepare_execute_units() {
             pub_in_explore_mode->publish(msg);
         }
     });
+
+    execution_units_.push_back([this]() {
+        if(condition_mode_selected->get()) {
+            RCLCPP_INFO_STREAM_THROTTLE(
+                this->get_logger(), *this->get_clock(), 1000, "Exploration Mode Activated...");
+        } else {
+            RCLCPP_INFO_STREAM_THROTTLE(
+                this->get_logger(), *this->get_clock(), 1000, "Exploration Mode Not Active...");
+        }
+    });
+
+    // Explore Area.
+    execution_units_.push_back([this]() {
+        if ( action_find_casualty->is_active() ) {
+            if ( action_find_casualty->active_has_changed() ) {
+                action_find_casualty->set_running();
+            }
+            
+            if ( action_find_casualty->is_running() ) {
+                RCLCPP_INFO_STREAM_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000, "Looking for Casualty...");
+
+                //base_node_msgs::msg::WorkingRequest msg;
+                std_msgs::msg::Bool msg;
+                msg.data = true;
+                pub_exploration_request->publish(msg);
+
+                if (reachable_casualty_found){
+                  RCLCPP_INFO_STREAM_THROTTLE(
+                     this->get_logger(), *this->get_clock(), 1000, "Found a casualty in reach! Will transition to inspection mode.");
+                  action_find_casualty->set_success();
+                  reachable_casualty_found = false;
+                }
+
+            }
+        } else {
+            if ( action_find_casualty->active_has_changed() ) {
+                action_find_casualty->set_failure();
+            }
+        }
+    });
+
+    execution_units_.push_back([this]() {
+        if ( action_go_to_inspection->is_active() ) {
+            if ( action_go_to_inspection->active_has_changed() ) {
+                action_go_to_inspection->set_running();
+            }
+            
+            if ( action_go_to_inspection->is_running() ) {
+                RCLCPP_INFO_STREAM_THROTTLE(
+                    this->get_logger(), *this->get_clock(), 1000, "Looking for Casualty...");
+
+                switch_mode(BehaviorState_t::INSPECT);
+            }
+        } else {
+            if ( action_go_to_inspection->active_has_changed() ) {
+                action_go_to_inspection->set_failure();
+            }
+        }
+    });
 }
 
 void Behavior_Executive::execute() {
@@ -277,36 +379,7 @@ void Behavior_Executive::pub_updates(){
 
 void Behavior_Executive::callback_state(std_msgs::msg::UInt8 msg) {
     curr_mode = integer_to_behavior_state(msg.data);
-  
-    switch (curr_mode) {
-        case BehaviorState_t::IDLE:
-            condition_idle_mode_req->set(true);
-            condition_inspect_mode_req->set(false);
-            condition_explore_mode_req->set(false);
-            condition_manual_mode_req->set(false);
-            break;
-        case BehaviorState_t::MANUAL:
-            condition_manual_mode_req->set(true);
-            condition_inspect_mode_req->set(false);
-            condition_explore_mode_req->set(false);
-            condition_idle_mode_req->set(false);
-            break;
-        case BehaviorState_t::INSPECT:
-            condition_inspect_mode_req->set(true);
-            condition_idle_mode_req->set(false);
-            condition_explore_mode_req->set(false);
-            condition_manual_mode_req->set(false);
-            break;
-        case BehaviorState_t::EXPLORE:
-            condition_explore_mode_req->set(true);
-            condition_idle_mode_req->set(false);
-            condition_inspect_mode_req->set(false);
-            condition_manual_mode_req->set(false);
-            break;
-        default:
-            RCLCPP_ERROR(this->get_logger(), "Invalid state received: %d", msg.data);
-            break;
-    }
+    switch_mode(curr_mode);
 }
 
 void Behavior_Executive::callback_init(std_msgs::msg::Bool msg){
@@ -320,6 +393,101 @@ void Behavior_Executive::callback_init(std_msgs::msg::Bool msg){
 void Behavior_Executive::callback_estop(std_msgs::msg::Bool msg){
   condition_estop->set(msg.data); 
 }
+
+void Behavior_Executive::callback_mode_select(std_msgs::msg::Bool msg){
+    if(msg.data == true) {
+      condition_mode_selected->set(true); 
+    } else {
+      condition_mode_selected->set(false);
+    }
+}
+
+void Behavior_Executive::callback_casualties(humanflow_msgs::msg::ReIDPersonArray msg){
+  if (action_find_casualty->is_active() && action_find_casualty->is_running()){
+  if (msg.peoplemap.size() == 0){
+    reachable_casualty_found = false;
+    return;
+  }
+  else if (!robot_coordinates_obtained){
+    return;
+  }
+  else {
+    for (auto &person : msg.peoplemap){
+      auto person_position = person.gps;
+      auto robot_position = latest_robot_gps;
+
+      double distance = get_distance(robot_position, person_position);
+      RCLCPP_INFO(this->get_logger(), "Casualty ID: %d is %.2fm away.", person.global_id ,distance);
+      
+      if (distance < INSPECTABLE_DISTANCE){
+        reachable_casualty_found = true;
+        break;
+      }
+    }
+    
+  }
+
+  }
+}
+
+void Behavior_Executive::callback_robot_gps(sensor_msgs::msg::NavSatFix msg){
+  latest_robot_gps = msg;
+  robot_coordinates_obtained = true;
+  return;
+}
+
+double Behavior_Executive::get_distance(sensor_msgs::msg::NavSatFix a, sensor_msgs::msg::NavSatFix b){ 
+  auto a_utm = geographic_utils::latlon_to_utm(a.latitude, a.longitude);
+  auto b_utm = geographic_utils::latlon_to_utm(b.latitude, b.longitude);
+  if (a_utm.zone != b_utm.zone){
+    RCLCPP_ERROR(this->get_logger(), "THE ROBOT AND CASUALTY COORDINATES ARE IN DIFFERENT UTM ZONES!");
+    return -1;
+  }
+  double dif_x = a_utm.x-b_utm.x;
+  double dif_y = a_utm.y-b_utm.y;
+  return sqrt(dif_x*dif_x+dif_y*dif_y);
+}
+
+void Behavior_Executive::switch_mode(BehaviorState_t state){
+
+    switch (state) {
+        case BehaviorState_t::IDLE:
+            condition_idle_mode_req->set(true);
+            condition_inspect_mode_req->set(false);
+            condition_explore_mode_req->set(false);
+            condition_manual_mode_req->set(false);
+            condition_approach_mode_req->set(false);
+            break;
+        case BehaviorState_t::MANUAL:
+            condition_manual_mode_req->set(true);
+            condition_inspect_mode_req->set(false);
+            condition_explore_mode_req->set(false);
+            condition_idle_mode_req->set(false);
+            condition_approach_mode_req->set(false);
+            break;
+        case BehaviorState_t::INSPECT:
+            condition_inspect_mode_req->set(true);
+            condition_idle_mode_req->set(false);
+            condition_explore_mode_req->set(false);
+            condition_manual_mode_req->set(false);
+            condition_approach_mode_req->set(false);
+            break;
+        case BehaviorState_t::EXPLORE:
+            condition_explore_mode_req->set(true);
+            condition_idle_mode_req->set(false);
+            condition_inspect_mode_req->set(false);
+            condition_manual_mode_req->set(false);
+            condition_approach_mode_req->set(false);
+            break;
+        case BehaviorState_t::APPROACH:
+            condition_approach_mode_req->set(true);
+            condition_idle_mode_req->set(false);
+            condition_inspect_mode_req->set(false);
+            condition_explore_mode_req->set(false);
+            condition_manual_mode_req->set(false);
+    }
+}
+
 
 //Action timer defintions
 void Behavior_Executive::timer_callback_init() {

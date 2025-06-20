@@ -17,6 +17,10 @@
   <depend>behavior_tree_msgs</depend>
   <depend>behavior_tree</depend>
   <depend>rqt_behavior_tree</depend>
+    
+  <depend>base_node_msgs</depend>
+  <depend>humanflow_msgs</depend>
+  <depend>geographic_utils</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
